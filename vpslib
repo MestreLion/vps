@@ -1,0 +1,55 @@
+# To be sourced by all scripts
+
+set -Eeuo pipefail
+trap 'error "line $LINENO, code $?: $BASH_COMMAND"' ERR
+
+bold()    { tput bold; printf '%s' "$@"; tput sgr0; }
+red()     { tput setaf 1; bold "$@"; }
+green()   { tput setaf 2; bold "$@"; }
+fatal()   { echo $(red "${0##*/}" ': fatal' "${1:+: $1}") >&2; exit ${2:-1}; }
+error()   { echo $(red "${0##*/}" ': error' "${1:+: $@}") >&2; }
+message() { ((VPS_VERBOSE)) && echo $(green '* ' "$@") || :; }
+
+VPS_VERBOSE=${VPS_VERBOSE:-1}
+VPS_CONFIG=${1:-${VPS_CONFIG:-/etc/vps.conf}}
+
+if [[ -r "$VPS_CONFIG" ]]; then
+	set -a  # export all vars in config
+	source "$VPS_CONFIG"
+	set +a
+fi
+
+message "Config file: $VPS_CONFIG"
+env | grep -q '^VPS_' || fatal "No config vars set. Check config file: $VPS_CONFIG"
+
+
+#------------------------------------------------------------------------------
+
+try()     { "$@" 2>/dev/null || : ; }
+exists()  { type "$@" >/dev/null 2>&1; }
+is_root() { [[ "$(id -u)" -eq 0 ]]; }
+
+require_root() {
+	is_root || fatal "You must run this as root"
+}
+
+package_version() {
+	dpkg-query --showformat='${Version}' --show "$1" 2>/dev/null
+}
+
+package_installed() {
+	package_version "$1" >/dev/null
+}
+
+package_install() {
+	# Install all non-existing packages in a single command
+	# Usage: package_install [PACKAGE...]
+	local pkg=
+	local pkgs=()
+	for pkg in "$@"; do
+		if ! package_installed "$pkg"; then pkgs+=( "$pkg" ); fi
+	done
+	if (("${#pkgs[@]}")); then
+		sudo apt install -y "${pkgs[@]}"
+	fi
+}
