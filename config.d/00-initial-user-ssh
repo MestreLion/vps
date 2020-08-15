@@ -1,0 +1,127 @@
+#!/bin/bash
+#
+# userdata.template - Template for VPS initial config script
+#
+# Copyright (C) 2020 Rodrigo Silva (MestreLion) <linux@rodrigosilva.com>
+# License: GPLv3 or later, at your choice. See <http://www.gnu.org/licenses/gpl>
+###############################################################################
+
+vpslib=$(dirname "$(readlink -f "$0")")/../vpslib
+if [[ -r "$vpslib" ]]; then source "$vpslib"; else
+	echo "VPS Setup library not found: $(readlink -f "$vpslib")" >&2
+	echo "Usage: ${0##*/} [CONFIG_FILE]" >&2
+	exit 1
+fi
+
+#------------------------------------------------------------------------------
+
+VPS_USER=${VPS_USER:-vps}
+VPS_NAME=${VPS_NAME:-VPS Default User}
+VPS_SSHKEY=${VPS_SSHKEY:-}
+VPS_SSH_PORT=${VPS_SSH_PORT:-22}
+
+#------------------------------------------------------------------------------
+
+require_root
+
+# Update the system
+opts=(
+	# Keep conffiles, save new ones as *.dpkg-dist. Possibly not needed anymore
+	# https://raphaelhertzog.com/2010/09/21/debian-conffile-configuration-file-managed-by-dpkg/
+	-o 'Dpkg::Options::=--force-confdef' -o 'Dpkg::Options::=--force-confold'
+)
+for cmd in update full-upgrade autoremove; do
+	DEBIAN_FRONTEND=noninteractive apt --yes "$cmd" "${opts[@]}"
+done
+
+
+# Add regular user with sudo rights. Password must be set on initial login
+useradd --create-home --shell '/bin/bash' --groups sudo --comment "$VPS_NAME" "$VPS_USER"
+passwd --delete "$VPS_USER"
+chage --lastday 0 "$VPS_USER"
+
+
+
+# Create SSH directory for user and add the authorized key
+if ssh-keygen -l -f <(echo "$VPS_PUBKEY") &>/dev/null; then
+	sshdir=$(sudo -u "$VPS_USER" -H -s eval 'echo "$HOME"')/.ssh
+	authkeys=$sshdir/authorized_keys
+	mkdir --parents --mode 0700 -- "$sshdir"
+	echo "$VPS_SSHKEY" >> "$authkeys"
+	chmod 0600 -- "$authkeys"
+	chown --recursive "$VPS_USER": -- "$sshdir"
+fi
+
+
+# SSH custom settings
+# - Disable SSH login for root
+# - Disable SSH password login for all users
+# - Extend timeout to 120s * 720 = 24h
+# - Disable X11 Forwarding
+# - Allow SSH tunneling
+configdir=/etc/ssh/sshd_config.d
+cat > "$configdir"/50-"$VPS_USER"-general.conf <<-EOF
+	# By ${VPS_NAME}
+
+	# Disable SSH login for root
+	PermitRootLogin no
+
+	# Disable SSH password login for all users
+	PasswordAuthentication no
+
+	# Honor PermitRootLogin=no and PasswordAuthentication=no when UsePAM=yes
+	# Already the default in Debian, as is UsePAM=yes
+	ChallengeResponseAuthentication no
+
+	# Disable inactivity timeout AND set unresponsiveness timeout to 120s (x3)
+	ClientAliveInterval 120
+
+	# Disable X11 Forwarding
+	# Default in Debian is yes
+	X11Forwarding no
+
+	# Allow SSH tunneling
+	GatewayPorts yes
+EOF
+# - Change listening port
+if [[ "$VPS_SSH_PORT" != 22 ]]; then
+	cat > "$configdir"/50-"$VPS_USER"-port.conf <<-EOF
+		# By ${VPS_NAME}
+		# Change listening port to ${VPS_SSH_PORT}
+		Port ${VPS_SSH_PORT}
+	EOF
+fi
+systemctl reload ssh
+
+
+# Disable remote login for root, including SSH
+# root can only log in using VPS web console
+conf=/etc/security/access.conf
+bak=$conf.$VPS_USER.bak
+if [[ ! -f "$bak" ]]; then
+	cp --preserve --no-clobber -- "$conf" "$bak"
+	cat >> "$conf" <<-EOF
+
+
+	# Added by ${VPS_NAME}
+	# Disable remote login for root, including SSH
+	-:root:ALL EXCEPT LOCAL
+	EOF
+fi
+
+
+# screenFetch, a nice ASCII sysinfo for MOTD
+# https://github.com/KittyKatt/screenFetch
+package_install screenfetch
+conf=/etc/update-motd.d/05-"$VPS_USER"-header
+cat > "$conf" <<-EOF
+	#!/bin/sh
+	# By ${VPS_NAME}
+	# A nice sysinfo for MOTD
+	# https://github.com/KittyKatt/screenFetch
+	screenfetch
+EOF
+chmod +x "$conf"
+
+# Speaking of MOTD...
+try sed -i '/^echo$/s/^/#/' /etc/update-motd.d/97-overlayroot
