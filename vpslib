@@ -28,13 +28,14 @@ VPS_CONFIG=${1:-${VPS_CONFIG:-/etc/vps/vps.conf}}  # default cannot use VPS_SLUG
 VPS_SLUG=${VPS_SLUG:-vpssetup}
 
 if [[ -r "$VPS_CONFIG" ]]; then
-	set -a  # export all vars in config
+	set -a  # Export all non-array vars in config. Just for the check below
 	source "$VPS_CONFIG"
 	set +a
 fi
 
 message "Config file: $VPS_CONFIG"
-env | grep -q '^VPS_' || fatal "No config vars set. Check config file: $VPS_CONFIG"
+env | grep -q '^VPS_' 2>/dev/null ||
+	fatal "No config vars set. Check config file: $VPS_CONFIG"
 
 
 #------------------------------------------------------------------------------
