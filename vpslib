@@ -1,4 +1,17 @@
-# To be sourced by all scripts
+# VPS Setup library of utlity functions and procedures
+#
+# Copyright (C) 2020 Rodrigo Silva (MestreLion) <linux@rodrigosilva.com>
+# License: GPLv3 or later, at your choice. See <http://www.gnu.org/licenses/gpl>
+#
+# To be sourced by all scripts.
+# Add the following header:
+#	vpslib=$(dirname "$(readlink -f "$0")")/../vpslib
+#	if [[ -r "$vpslib" ]]; then source "$vpslib"; else
+#		echo "VPS Setup library not found: $(readlink -f "$vpslib")" >&2
+#		echo "Usage: ${0##*/} [CONFIG_FILE]" >&2
+#		exit 1
+#	fi
+###############################################################################
 
 set -Eeuo pipefail
 trap 'error "line $LINENO, code $?: $BASH_COMMAND"' ERR
@@ -11,7 +24,8 @@ error()   { echo $(red "${0##*/}" ': error' "${1:+: $@}") >&2; }
 message() { ((VPS_VERBOSE)) && echo $(green '* ' "$@") || :; }
 
 VPS_VERBOSE=${VPS_VERBOSE:-1}
-VPS_CONFIG=${1:-${VPS_CONFIG:-/etc/vps.conf}}
+VPS_CONFIG=${1:-${VPS_CONFIG:-/etc/vps/vps.conf}}  # default cannot use VPS_SLUG
+VPS_SLUG=${VPS_SLUG:-vpssetup}
 
 if [[ -r "$VPS_CONFIG" ]]; then
 	set -a  # export all vars in config
@@ -25,22 +39,21 @@ env | grep -q '^VPS_' || fatal "No config vars set. Check config file: $VPS_CONF
 
 #------------------------------------------------------------------------------
 
-try()     { "$@" 2>/dev/null || : ; }
-exists()  { type "$@" >/dev/null 2>&1; }
+try() { "$@" 2>/dev/null || :; }
+now() { date +%Y%m%d%H%M%S; }
+exists() { type "$@" >/dev/null 2>&1; }
 is_root() { [[ "$(id -u)" -eq 0 ]]; }
-
-require_root() {
-	is_root || fatal "You must run this as root"
-}
+bakfile() { echo "${1:-}.${VPS_SLUG:-}.$(now).bak"; }
+backup_file() { cp --preserve --no-clobber -- "${1:-}" "$(bakfile "${1:-}")"; }
+user_exists() { id "${1:-}" &>/dev/null; }
+require_root() { is_root || fatal "You must run this as root"; }
 
 package_version() {
 	dpkg-query --showformat='${Version}' --show "$1" 2>/dev/null
 }
-
 package_installed() {
-	package_version "$1" >/dev/null
+	package_version "$1" >/dev/null;
 }
-
 package_install() {
 	# Install all non-existing packages in a single command
 	# Usage: package_install [PACKAGE...]

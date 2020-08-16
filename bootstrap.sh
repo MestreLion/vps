@@ -1,5 +1,6 @@
 #!/bin/bash
-# bootstrap - Bootstrap VPS initial config
+#
+# Bootstrap VPS initial config
 #
 # Copyright (C) 2020 Rodrigo Silva (MestreLion) <linux@rodrigosilva.com>
 # License: GPLv3 or later, at your choice. See <http://www.gnu.org/licenses/gpl>
@@ -15,9 +16,9 @@
 ###############################################################################
 
 set -Eeuo pipefail  # exits on any errors
-trap '>&2 echo "error $? executing command in line $LINENO: $BASH_COMMAND"' ERR
+trap '>&2 echo "error in line $LINENO, code $?, command: $BASH_COMMAND"' ERR
 
-export VPS_CONFIG=${1:-${VPS_CONFIG:-/etc/vps.conf}}
+export VPS_CONFIG=${1:-${VPS_CONFIG:-'/etc/vps/vps.conf'}}
 
 if [[ -r "$VPS_CONFIG" ]]; then
 	set -a  # export all vars in config
@@ -46,11 +47,11 @@ fi
 git -C "$VPS_DIR" pull --quiet
 
 if [[ ! -f "$VPS_CONFIG" ]]; then
-	cp --no-clobber -- "$VPS_DIR"/vps.template.conf "$VPS_CONFIG"
-	nano "$VPS_CONFIG"
-	set -a  # export all vars in config
-	source "$VPS_CONFIG"
-	set +a
+	install --mode 600 -DT -- "$VPS_DIR"/vps.template.conf "$VPS_CONFIG"
 fi
 
-env | grep VPS_
+nano "$VPS_CONFIG"
+set -a  # export all vars in config
+source "$VPS_CONFIG"
+set +a
+env | grep VPS_ || :
