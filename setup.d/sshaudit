@@ -1,0 +1,52 @@
+#!/bin/bash
+#
+# SSH hardening rules
+# https://www.sshaudit.com/hardening_guides.html
+#
+# Copyright (C) 2020 Rodrigo Silva (MestreLion) <linux@rodrigosilva.com>
+# License: GPLv3 or later, at your choice. See <http://www.gnu.org/licenses/gpl>
+###############################################################################
+
+vpslib=$(dirname "$(readlink -f "$0")")/../vpslib
+if [[ -r "$vpslib" ]]; then source "$vpslib"; else
+	echo "VPS Setup library not found: $(readlink -f "$vpslib")" >&2
+	echo "Usage: ${0##*/} [CONFIG_FILE]" >&2
+	exit 1
+fi
+
+#------------------------------------------------------------------------------
+
+require_root
+
+message 'Harden SSH keys, algorithms and ciphers'
+
+# Re-generate the RSA and ED25519 keys
+# Not needed to get 95/100 score (the maximum for Ubuntu 20.04)
+#rm /etc/ssh/ssh_host_*
+#ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -N ""
+#ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N ""
+
+# Remove small Diffie-Hellman moduli
+conf=/etc/ssh/moduli
+safe="$conf".safe
+awk -- '$5 >= 3071' "$conf" > "$safe"
+if [[ -s "$safe" ]]; then
+	backup_file "$conf"
+	mv -- "$conf" "$safe"
+fi
+rm -f -- "$safe"
+
+# Enable the RSA and ED25519 keys
+# HostKey /etc/ssh/ssh_host_{rsa,ed25519}_key are already enabled by default!
+
+# Restrict supported key exchange, cipher, and MAC algorithms
+cat > /etc/ssh/sshd_config.d/sshaudit-hardening.conf <<-EOF
+	# Restrict key exchange, cipher, and MAC algorithms
+	# https://www.sshaudit.com/hardening_guides.html
+	KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256
+	Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
+	MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com
+	HostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,sk-ssh-ed25519-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com
+EOF
+
+systemctl reload ssh
