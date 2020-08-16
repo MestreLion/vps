@@ -24,8 +24,8 @@ error()   { echo $(red "${0##*/}" ': error' "${1:+: $@}") >&2; }
 message() { ((VPS_VERBOSE)) && echo $(green '* ' "$@") || :; }
 
 VPS_VERBOSE=${VPS_VERBOSE:-1}
-VPS_CONFIG=${1:-${VPS_CONFIG:-/etc/vps/vps.conf}}  # default cannot use VPS_SLUG
-VPS_SLUG=${VPS_SLUG:-vpssetup}
+VPS_CONFIG=${1:-${VPS_CONFIG:-'/etc/vps/vps.conf'}}  # can't use VPS_SLUG here
+VPS_SLUG=${VPS_SLUG:-'vpssetup'}
 
 if [[ -r "$VPS_CONFIG" ]]; then
 	set -a  # Export all non-array vars in config. Just for the check below
