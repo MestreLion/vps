@@ -21,9 +21,7 @@ trap '>&2 echo "error in line $LINENO, code $?, command: $BASH_COMMAND"' ERR
 export VPS_CONFIG=${1:-${VPS_CONFIG:-'/etc/vps/vps.conf'}}
 
 if [[ -r "$VPS_CONFIG" ]]; then
-	set -a  # export all vars in config
 	source "$VPS_CONFIG"
-	set +a
 fi
 
 ###############################################################################
@@ -51,7 +49,5 @@ if [[ ! -f "$VPS_CONFIG" ]]; then
 fi
 
 nano "$VPS_CONFIG"
-set -a  # export all vars in config
 source "$VPS_CONFIG"
-set +a
-env | grep VPS_ || :
+set | grep '^VPS_' | sort || :
