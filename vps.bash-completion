@@ -26,7 +26,6 @@ _have vps-setup &&
 _vps_setup() {
 	local cur prev words cword
 	_init_completion || return
-	_get_comp_words_by_ref cur
 
 	# if dir is unset, read the config file
 	if [[ -z ${__vps__dir+x} ]]; then __vps_get_dir; fi
