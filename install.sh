@@ -13,7 +13,7 @@
 ###############################################################################
 
 set -Eeuo pipefail  # exit on any error
-trap '>&2 echo "error in line $LINENO, code $?, command: $BASH_COMMAND"' ERR
+trap '>&2 echo "error: line $LINENO, status $?: $BASH_COMMAND"' ERR
 
 export VPS_CONFIG=${1:-${VPS_CONFIG:-'/etc/vps/vps.conf'}}
 if [[ -r "$VPS_CONFIG" ]]; then source "$VPS_CONFIG"; fi

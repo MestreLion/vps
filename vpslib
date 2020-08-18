@@ -14,7 +14,7 @@
 ###############################################################################
 
 set -Eeuo pipefail
-trap 'error "line $LINENO, code $?: $BASH_COMMAND"' ERR
+trap 'error "line $LINENO, status $?: $BASH_COMMAND"' ERR
 
 try()     { "$@" 2>/dev/null || :; }
 bold()    { try tput bold; printf '%s' "$@"; try tput sgr0; echo; }

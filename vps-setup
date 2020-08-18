@@ -7,7 +7,7 @@
 ###############################################################################
 
 set -Eeuo pipefail
-trap 'error "line $LINENO, code $?: $BASH_COMMAND"' ERR
+trap 'error "line $LINENO, status $?: $BASH_COMMAND"' ERR
 
 basenames=("$@")
 
@@ -41,26 +41,26 @@ debugvar setupdir
 header 'VPS Setup'
 message "Config file: $VPS_CONFIG"
 message "Jobs to run: ${basenames[@]}"
-code=0
+status=0
 for job in "${basenames[@]}"; do
 	setup=$setupdir/$job
 	if [[ ! -x "$setup" ]]; then continue; fi
 
 	runmsg "$setup"  # maybe use $job instead of full path $setup?
-	if "$setup"; then continue; else code=$?; fi
+	if "$setup"; then continue; else status=$?; fi
 
 	# Error handling
 	case "${VPS_BATCH_ERROR,,}" in
 	abort);;
-	continue) code=123; continue;;
+	continue) status=1; continue;;
 	*) error "invalid VPS_BATCH_ERROR value: $VPS_BATCH_ERROR";;
 	esac
 
 	warning 'aborting remaining jobs'
-	exit $code
+	exit $status
 done
-if ((code)); then
+if ((status)); then
 	message "Done, but errors occured"
-	exit $code
+	exit $status
 fi
 message "Done!"
