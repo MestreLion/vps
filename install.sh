@@ -52,7 +52,7 @@ if ((VPS_INTERACTIVE)); then
 		editor "$VPS_CONFIG"
 		source "$VPS_CONFIG"
 		show_settings
-		if ! confirm "Proceed with those settings?"; then break; fi
+		if confirm "Proceed with those settings?"; then break; fi
 	done
 else
 	source "$VPS_CONFIG"
