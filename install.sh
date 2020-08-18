@@ -27,7 +27,8 @@ VPS_INTERACTIVE=${VPS_INTERACTIVE:-1}
 #------------------------------------------------------------------------------
 
 execdir=/usr/local/bin
-bashcompdir=/usr/share/bash-completion/completions  # no /usr/local :-(
+bashcompdir=$(pkg-config bash-completion --variable=completionsdir 2>/dev/null ||
+	echo '/usr/share/bash-completion/completions')  # no /usr/local :-(
 
 #------------------------------------------------------------------------------
 
