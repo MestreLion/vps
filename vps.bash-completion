@@ -5,26 +5,13 @@
 # License: GPLv3 or later, at your choice. See <http://www.gnu.org/licenses/gpl>
 #
 # Source in your current shell or install at:
-# /usr/share/bash-completion/completions/vps-run
+# /usr/share/bash-completion/completions/vps-setup
+#
+###############################################################################
+
 
 # Clear the variables caching when (re-)sourcing the completion script.
-unset __vps__dir 2>/dev/null
-
-vps-setup() (
-	setup=${1:-}
-
-	# Read the config file
-	__vps_get_dir
-	setupdir=$__vps__dir/setup.d
-	if [[ "$setup" ]]; then
-		echo "Running $setupdir/$setup"
-		ls -l "$setupdir"/"$setup"
-	else
-		echo "Running them all!"
-		ls -1 "$setupdir"
-	fi
-)
-
+unset __vps__dir
 
 __vps_get_dir() {
 	# subshell so it does not pollute global vars with all config vars
@@ -35,21 +22,16 @@ __vps_get_dir() {
 	)
 }
 
-
-__vps_compdir() {
-	_get_comp_words_by_ref cur
-	COMPREPLY=($(compgen -W '$(command ls $1 2>/dev/null)' -- $cur))
-}
-
-
 _have vps-setup &&
 _vps_setup() {
 	local cur prev words cword
 	_init_completion || return
+	_get_comp_words_by_ref cur
 
 	# if dir is unset, read the config file
 	if [[ -z ${__vps__dir+x} ]]; then __vps_get_dir; fi
 
-	__vps_compdir "$__vps__dir"/setup.d
+	COMPREPLY=($(compgen -W \
+		'$(command ls "$__vps__dir"/setup.d 2>/dev/null)' -- $cur))
 }
 complete -F _vps_setup vps-setup
