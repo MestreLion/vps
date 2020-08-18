@@ -1,0 +1,66 @@
+#!/bin/bash
+#
+# Main VPS Setup launcher
+#
+# Copyright (C) 2020 Rodrigo Silva (MestreLion) <linux@rodrigosilva.com>
+# License: GPLv3 or later, at your choice. See <http://www.gnu.org/licenses/gpl>
+###############################################################################
+
+set -Eeuo pipefail
+trap 'error "line $LINENO, code $?: $BASH_COMMAND"' ERR
+
+basenames=("$@")
+
+try()     { "$@" 2>/dev/null || :; }
+bold()    { try tput bold; printf '%s' "$@"; try tput sgr0; echo; }
+color()   { if (($# > 1)); then try tput setaf "$1"; shift; bold "$@"; fi; }
+red()     { color 1 "$@"; }
+green()   { color 2 "$@"; }
+yellow()  { color 3 "$@"; }
+blue()    { color 4 "$@"; }
+fatal()   { red    "${0##*/}: fatal${1:+: $@}" >&2; exit 1; }
+error()   { red              "error${1:+: $@}" >&2; }
+warning() { yellow         "warning${1:+: $@}" >&2; }
+header()  { if ((VPS_VERBOSE)); then try tput smul; blue "$@"; fi; }
+runmsg()  { if ((VPS_VERBOSE)); then blue  "*** $@"; fi; }
+message() { if ((VPS_VERBOSE)); then green "* $@"; fi; }
+debugmsg(){ if ((VPS_DEBUG)); then echo "$@" >&2; fi; }
+debugvar(){ if ((VPS_DEBUG)); then declare -p "$@" >&2; fi; }
+
+# Read the config file
+export VPS_CONFIG=${VPS_CONFIG:-'/etc/vps/vps.conf'}  # should also read $1
+if [[ -r "$VPS_CONFIG" ]]; then source "$VPS_CONFIG"; fi
+export VPS_BATCH=1  # so vpslib does not print config location for every file
+VPS_VERBOSE=${VPS_VERBOSE:-1}
+VPS_DEBUG=${VPS_DEBUG:-1}
+VPS_BATCH_ERROR=${VPS_BATCH_ERROR:-'abort'}  # abort, continue. Add 'ask'?
+
+setupdir=${VPS_DIR:-'/opt/vps'}/setup.d
+debugvar setupdir
+
+header 'VPS Setup'
+message "Config file: $VPS_CONFIG"
+message "Jobs to run: ${basenames[@]}"
+code=0
+for job in "${basenames[@]}"; do
+	setup=$setupdir/$job
+	if [[ ! -x "$setup" ]]; then continue; fi
+
+	runmsg "$setup"  # maybe use $job instead of full path $setup?
+	if "$setup"; then continue; else code=$?; fi
+
+	# Error handling
+	case "${VPS_BATCH_ERROR,,}" in
+	abort);;
+	continue) code=123; continue;;
+	*) error "invalid VPS_BATCH_ERROR value: $VPS_BATCH_ERROR";;
+	esac
+
+	warning 'aborting remaining jobs'
+	exit $code
+done
+if ((code)); then
+	message "Done, but errors occured"
+	exit $code
+fi
+message "Done!"
