@@ -9,6 +9,7 @@
 # - Install git from distribution repositories
 # - Clone project git repository, by default from Github
 # - Update (pull) the local git repository
+# - Run the installer
 #
 # Instructions:
 # - Choose "Ubuntu 20.04" image (/etc/ssh/sshd_config.d/ does not exist in 18.04)
@@ -33,7 +34,7 @@ export VPS_DIR=${VPS_DIR:-'/opt/vps'}
 
 for arg in "$@"; do if [[ "$arg" == '-h' || "$arg" == '--help' ]]; then
 	echo "Bootstrap VPS initial setup"
-	echo "Install git, clone and update local repository"
+	echo "Install git, clone or update local repository, run installer"
 	echo "See $VPS_REPO for details"
 	echo "Usage: bootstrap.sh [CONFIG_FILE]"
 	exit
@@ -54,10 +55,6 @@ fi
 
 git -C "$VPS_DIR" pull --quiet
 
-if [[ ! -f "$VPS_CONFIG" ]]; then
-	install --mode 600 -DT -- "$VPS_DIR"/vps.template.conf "$VPS_CONFIG"
-fi
+trap - ERR  # Since we got this far, remove the trap
 
-nano "$VPS_CONFIG"
-source "$VPS_CONFIG"
-set | grep '^VPS_' | sort || :
+"$VPS_DIR"/install.sh
