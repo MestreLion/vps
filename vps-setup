@@ -9,7 +9,23 @@
 set -Eeuo pipefail
 trap 'error "line $LINENO, status $?: $BASH_COMMAND"' ERR
 
+#------------------------------------------------------------------------------
+
+# Read the config file
+export VPS_CONFIG=${VPS_CONFIG:-'/etc/vps/vps.conf'}  # should also read $1
+if [[ -r "$VPS_CONFIG" ]]; then source "$VPS_CONFIG"; fi
+
+export VPS_BATCH=1  # so vpslib does not print config location for every job
+VPS_VERBOSE=${VPS_VERBOSE:-1}
+VPS_DEBUG=${VPS_DEBUG:-1}
+VPS_BATCH_ERROR=${VPS_BATCH_ERROR:-'abort'}  # abort, continue. Add 'ask'?
+VPS_DIR=${VPS_DIR:-'/opt/vps'}
+
+#------------------------------------------------------------------------------
+
 basenames=("$@")
+
+#------------------------------------------------------------------------------
 
 try()     { "$@" 2>/dev/null || :; }
 bold()    { try tput bold; printf '%s' "$@"; try tput sgr0; echo; }
@@ -27,15 +43,9 @@ message() { if ((VPS_VERBOSE)); then green "* $@"; fi; }
 debugmsg(){ if ((VPS_DEBUG)); then echo "$@" >&2; fi; }
 debugvar(){ if ((VPS_DEBUG)); then declare -p "$@" >&2; fi; }
 
-# Read the config file
-export VPS_CONFIG=${VPS_CONFIG:-'/etc/vps/vps.conf'}  # should also read $1
-if [[ -r "$VPS_CONFIG" ]]; then source "$VPS_CONFIG"; fi
-export VPS_BATCH=1  # so vpslib does not print config location for every file
-VPS_VERBOSE=${VPS_VERBOSE:-1}
-VPS_DEBUG=${VPS_DEBUG:-1}
-VPS_BATCH_ERROR=${VPS_BATCH_ERROR:-'abort'}  # abort, continue. Add 'ask'?
+#------------------------------------------------------------------------------
 
-setupdir=${VPS_DIR:-'/opt/vps'}/setup.d
+setupdir=$VPS_DIR/setup.d
 debugvar setupdir
 
 header 'VPS Setup'

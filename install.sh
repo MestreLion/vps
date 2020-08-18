@@ -15,17 +15,21 @@
 set -Eeuo pipefail  # exit on any error
 trap '>&2 echo "error: line $LINENO, status $?: $BASH_COMMAND"' ERR
 
+#------------------------------------------------------------------------------
+
 export VPS_CONFIG=${1:-${VPS_CONFIG:-'/etc/vps/vps.conf'}}
 if [[ -r "$VPS_CONFIG" ]]; then source "$VPS_CONFIG"; fi
-
-###############################################################################
 
 VPS_DIR=${VPS_DIR:-$(dirname "$(readlink -f "$0")")}
 VPS_VERBOSE=${VPS_VERBOSE:-1}
 VPS_INTERACTIVE=${VPS_INTERACTIVE:-1}
 
+#------------------------------------------------------------------------------
+
 execdir=/usr/local/bin
 bashcompdir=/usr/share/bash-completion/completions  # no /usr/local :-(
+
+#------------------------------------------------------------------------------
 
 confirm() {
 	# Non-empty garbage will always evaluate to and behave as NO
@@ -42,6 +46,7 @@ show_settings() {
 	set | grep '^VPS_' | sort || :
 }
 
+#------------------------------------------------------------------------------
 
 if [[ ! -f "$VPS_CONFIG" ]]; then
 	install --mode 600 -DT -- "$VPS_DIR"/vps.template.conf "$VPS_CONFIG"

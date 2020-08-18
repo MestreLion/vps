@@ -24,13 +24,15 @@
 set -Eeuo pipefail  # exit on any error
 trap '>&2 echo "error: line $LINENO, status $?: $BASH_COMMAND"' ERR
 
+#------------------------------------------------------------------------------
+
 export VPS_CONFIG=${1:-${VPS_CONFIG:-'/etc/vps/vps.conf'}}
 if [[ -r "$VPS_CONFIG" ]]; then source "$VPS_CONFIG"; fi
 
-###############################################################################
-
 export VPS_REPO=${VPS_REPO:-'https://github.com/MestreLion/vps.git'}
 export VPS_DIR=${VPS_DIR:-'/opt/vps'}
+
+#------------------------------------------------------------------------------
 
 for arg in "$@"; do if [[ "$arg" == '-h' || "$arg" == '--help' ]]; then
 	echo "Bootstrap VPS initial setup"
@@ -44,6 +46,8 @@ if [[ "$(id -u)" -ne 0 ]]; then
 	echo "You must run this as root" >&2
 	exit 1
 fi
+
+#------------------------------------------------------------------------------
 
 if ! dpkg-query --show git &>/dev/null; then
 	apt install -y git
