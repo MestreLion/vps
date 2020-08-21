@@ -18,7 +18,7 @@ trap 'error "line $LINENO, status $?: $BASH_COMMAND"' ERR
 
 #------------------------------------------------------------------------------
 
-VPS_CONFIG=${VPS_CONFIG:-'/etc/vps/vps.conf'}  # can't use VPS_SLUG here
+VPS_CONFIG=${VPS_CONFIG:-"/etc/vps/vps.conf"}  # can't use VPS_SLUG here
 if [[ -r "$VPS_CONFIG" ]]; then
 	set -a  # Export all non-array vars in config. Just for the check below
 	source "$VPS_CONFIG"
@@ -28,7 +28,7 @@ fi
 VPS_VERBOSE=${VPS_VERBOSE:-1}
 VPS_DEBUG=${VPS_DEBUG:-0}
 VPS_BATCH=${VPS_BATCH:-0}
-VPS_SLUG=${VPS_SLUG:-'vpssetup'}
+VPS_SLUG=${VPS_SLUG:-"vpssetup"}
 
 #------------------------------------------------------------------------------
 

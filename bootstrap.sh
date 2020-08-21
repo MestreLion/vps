@@ -26,11 +26,11 @@ trap '>&2 echo "error: line $LINENO, status $?: $BASH_COMMAND"' ERR
 
 #------------------------------------------------------------------------------
 
-export VPS_CONFIG=${1:-${VPS_CONFIG:-'/etc/vps/vps.conf'}}
+export VPS_CONFIG=${1:-${VPS_CONFIG:-"/etc/vps/vps.conf"}}
 if [[ -r "$VPS_CONFIG" ]]; then source "$VPS_CONFIG"; fi
 
-export VPS_REPO=${VPS_REPO:-'https://github.com/MestreLion/vps.git'}
-export VPS_DIR=${VPS_DIR:-'/opt/vps'}
+export VPS_REPO=${VPS_REPO:-"https://github.com/MestreLion/vps.git"}
+export VPS_DIR=${VPS_DIR:-"/opt/vps"}
 
 #------------------------------------------------------------------------------
 

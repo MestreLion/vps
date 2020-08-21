@@ -18,7 +18,7 @@ __vps_get_dir() {
 	__vps__dir=$(
 		config=${VPS_CONFIG:-'/etc/vps/vps.conf'}
 		if [[ -r "$config" ]]; then source "$config"; fi
-		echo "${VPS_DIR:-'/opt/vps'}"
+		echo "${VPS_DIR:-"/opt/vps"}"
 	)
 }
 

@@ -15,12 +15,12 @@ fi
 
 #------------------------------------------------------------------------------
 
-VPS_USER=${VPS_USER:-'vps'}
-VPS_USER_NAME=${VPS_USER_NAME:-'VPS Default User'}
+VPS_USER=${VPS_USER:-"vps"}
+VPS_USER_NAME=${VPS_USER_NAME:-"VPS Default User"}
 VPS_SSH_AUTH_PUBKEYS=("${VPS_SSH_AUTH_PUBKEYS[@]}")
-VPS_SSH_PORT=${VPS_SSH_PORT:-22}
-VPS_SLUG=${VPS_SLUG:-vpssetup}
-VPS_NAME=${VPS_NAME:-'VPS Setup'}
+VPS_SSH_PORT=${VPS_SSH_PORT:-"22"}
+VPS_SLUG=${VPS_SLUG:-"vpssetup"}
+VPS_NAME=${VPS_NAME:-"VPS Setup"}
 VPS_PACKAGES=("${VPS_PACKAGES[@]}")
 
 #------------------------------------------------------------------------------

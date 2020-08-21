@@ -12,14 +12,14 @@ trap 'error "line $LINENO, status $?: $BASH_COMMAND"' ERR
 #------------------------------------------------------------------------------
 
 # Read the config file
-export VPS_CONFIG=${VPS_CONFIG:-'/etc/vps/vps.conf'}  # should also read $1
+export VPS_CONFIG=${VPS_CONFIG:-"/etc/vps/vps.conf"}  # should also read $1
 if [[ -r "$VPS_CONFIG" ]]; then source "$VPS_CONFIG"; fi
 
 export VPS_BATCH=1  # so vpslib does not print config location for every job
 VPS_VERBOSE=${VPS_VERBOSE:-1}
 VPS_DEBUG=${VPS_DEBUG:-1}
-VPS_BATCH_ERROR=${VPS_BATCH_ERROR:-'abort'}  # abort, continue. Add 'ask'?
-VPS_DIR=${VPS_DIR:-'/opt/vps'}
+VPS_BATCH_ERROR=${VPS_BATCH_ERROR:-"abort"}  # abort, continue. Add 'ask'?
+VPS_DIR=${VPS_DIR:-"/opt/vps"}
 
 #------------------------------------------------------------------------------
 
