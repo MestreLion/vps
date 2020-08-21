@@ -32,7 +32,7 @@ safe="$conf".safe
 awk -- '$5 >= 3071' "$conf" > "$safe"
 if [[ -s "$safe" ]]; then
 	backup_file "$conf"
-	mv -- "$conf" "$safe"
+	mv -- "$safe" "$conf"
 fi
 rm -f -- "$safe"
 
