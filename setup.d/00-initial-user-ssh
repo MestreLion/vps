@@ -71,7 +71,7 @@ add_ssh_key() {
 	fi
 }
 # Create user SSH paths
-sshdir=$(sudo -u "$VPS_USER" -H -s eval 'echo "$HOME"')/.ssh
+sshdir=$(userhome "$VPS_USER")/.ssh
 userkeys=$sshdir/authorized_keys
 sudo --user "$VPS_USER" mkdir --parents --mode 0700 -- "$sshdir"
 sudo --user "$VPS_USER" touch -- "$userkeys"

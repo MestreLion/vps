@@ -57,7 +57,7 @@ if [[ ! -d "$VPS_DIR" ]]; then
 	git clone -- "$VPS_REPO" "$VPS_DIR"
 fi
 
-git -C "$VPS_DIR" pull --quiet
+git -C "$VPS_DIR" pull --quiet --force
 
 trap - ERR  # Since we got this far, remove the trap
 
