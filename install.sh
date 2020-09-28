@@ -18,7 +18,12 @@ trap '>&2 echo "error: line $LINENO, status $?: $BASH_COMMAND"' ERR
 #------------------------------------------------------------------------------
 
 export VPS_CONFIG=${1:-${VPS_CONFIG:-'/etc/vps/vps.conf'}}
-if [[ -r "$VPS_CONFIG" ]]; then source "$VPS_CONFIG"; fi
+vpslib=$(dirname "$(readlink -f "$0")")/vpslib
+if [[ -r "$vpslib" ]]; then source "$vpslib"; else
+	echo "VPS Setup library not found: $(readlink -f "$vpslib")" >&2
+	echo "Usage: ${0##*/} [CONFIG_FILE]" >&2
+	exit 1
+fi
 
 VPS_DIR=${VPS_DIR:-$(dirname "$(readlink -f "$0")")}
 VPS_VERBOSE=${VPS_VERBOSE:-1}
@@ -32,22 +37,14 @@ bashcompdir=$(pkg-config bash-completion --variable=completionsdir 2>/dev/null |
 
 #------------------------------------------------------------------------------
 
-confirm() {
-	# Non-empty garbage will always evaluate to and behave as NO
-	local message=${1:-"Confirm?"}
-	local default=NO
-
-	if ((VPS_INTERACTIVE)); then
-		read -p "$message (y/n, default $default): " resp
-		case "${resp:-$default}" in [Yy]*);; *) return 1;; esac
-	fi
-}
 show_settings() {
 	if ! ((VPS_VERBOSE)); then return; fi
 	set | grep '^VPS_' | sort || :
 }
 
 #------------------------------------------------------------------------------
+
+require_root
 
 if [[ ! -f "$VPS_CONFIG" ]]; then
 	install --mode 600 -DT -- "$VPS_DIR"/vps.template.conf "$VPS_CONFIG"

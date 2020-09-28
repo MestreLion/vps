@@ -26,6 +26,7 @@ if [[ -r "$VPS_CONFIG" ]]; then
 fi
 
 VPS_VERBOSE=${VPS_VERBOSE:-1}
+VPS_INTERACTIVE=${VPS_INTERACTIVE:-1}
 VPS_DEBUG=${VPS_DEBUG:-0}
 VPS_BATCH=${VPS_BATCH:-0}
 VPS_SLUG=${VPS_SLUG:-"vpssetup"}
@@ -80,5 +81,16 @@ package_install() {
 	done
 	if (("${#pkgs[@]}")); then
 		sudo apt install -y "${pkgs[@]}"
+	fi
+}
+
+confirm() {
+	# Non-empty garbage will always evaluate to and behave as NO
+	local message=${1:-"Confirm?"}
+	local default=NO
+
+	if ((VPS_INTERACTIVE)); then
+		read -p "$message (y/n, default $default): " resp
+		case "${resp:-$default}" in [Yy]*);; *) return 1;; esac
 	fi
 }
