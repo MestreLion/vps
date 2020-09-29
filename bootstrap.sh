@@ -57,7 +57,9 @@ if [[ ! -d "$VPS_DIR" ]]; then
 	git clone -- "$VPS_REPO" "$VPS_DIR"
 fi
 
-git -C "$VPS_DIR" pull --quiet --force
+git -C "$VPS_DIR" fetch
+git -C "$VPS_DIR" checkout --force master
+git -C "$VPS_DIR" reset --hard origin/master
 
 trap - ERR  # Since we got this far, remove the trap
 
