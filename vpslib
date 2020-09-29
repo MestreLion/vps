@@ -59,7 +59,7 @@ env | grep -q '^VPS_' 2>/dev/null ||
 now() { date +%Y%m%d%H%M%S; }
 exists() { type "$@" >/dev/null 2>&1; }
 is_root() { [[ "$(id -u)" -eq 0 ]]; }
-bakfile() { echo "${1:-}.${VPS_SLUG:-}.$(now).bak"; }
+bakfile() { echo "${1:-}.${VPS_SLUG}.$(now).bak"; }
 backup_file() { cp -p --no-clobber -- "${1:-}" "${2:-$(bakfile "${1:-}")}"; }
 user_exists() { id "${1:-}" &>/dev/null; }
 require_root() { is_root || fatal "You must run this as root"; }

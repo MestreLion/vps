@@ -126,7 +126,7 @@ EOF
 # Remove root authorized keys, just in case
 try mv -- "$rootkeys" "$(bakfile "$rootkeys")"
 
-# - Change listening port
+# Change listening port
 if [[ "$VPS_SSH_PORT" != '22' ]]; then
 	cat > "$configdir"/50-"$VPS_SLUG"-port.conf <<-EOF
 		# By ${VPS_NAME}
@@ -152,6 +152,22 @@ if [[ -r "$conf" ]] && ! grep -Fxq -- "$setting" "$conf"; then
 	${setting}
 	EOF
 fi
+
+
+message 'Setup and enable Firewall'
+if [[ "$VPS_SSH_PORT" == 22 ]]; then
+	ufw allow OpenSSH
+else
+	cat > /etc/ufw/applications.d/ssh."$VPS_SLUG".conf <<-EOF
+		[SSH]
+		title=${VPS_NAME} SSH custom port
+		description=OpenSSH service on port ${VPS_SSH_PORT} created by ${VPS_NAME}
+		ports=${VPS_SSH_PORT}/tcp
+	EOF
+	ufw allow SSH
+	ufw reload
+fi
+ufw enable
 
 
 message 'Enhance MOTD'
