@@ -1,0 +1,182 @@
+#!/bin/bash
+#
+# Minecraft Java Edition Server
+#
+# Copyright (C) 2020 Rodrigo Silva (MestreLion) <linux@rodrigosilva.com>
+# License: GPLv3 or later, at your choice. See <http://www.gnu.org/licenses/gpl>
+###############################################################################
+
+vpslib=$(dirname "$(readlink -f "$0")")/../vpslib
+if [[ -r "$vpslib" ]]; then source "$vpslib"; else
+	echo "VPS Setup library not found: $(readlink -f "$vpslib")" >&2
+	echo "Usage: ${0##*/} [CONFIG_FILE]" >&2
+	exit 1
+fi
+
+#------------------------------------------------------------------------------
+
+VPS_NAME=${VPS_NAME:-"VPS Setup"}
+VPS_MINECRAFT_USER=minecraft
+VPS_MINECRAFT_DIR=/opt/minecraft-server
+VPS_MINECRAFT_SEED=1052397348887568626
+
+#------------------------------------------------------------------------------
+
+url='https://www.minecraft.net/en-us/download/server'
+service=/etc/systemd/system/minecraft.service
+
+launcher=$VPS_MINECRAFT_DIR/minecraft-server.sh
+eula=$VPS_MINECRAFT_DIR/eula.txt
+props=$VPS_MINECRAFT_DIR/server.properties
+
+#------------------------------------------------------------------------------
+
+require_root
+
+
+message 'Install Java and dependencies'
+package_install 'default-jdk-headless' 'screen'
+
+message 'Create Minecraft Server service user'
+if user_exists "$VPS_MINECRAFT_USER"; then
+	VPS_MINECRAFT_DIR=$(userhome "$VPS_MINECRAFT_USER")
+else
+	useropts=(
+		--system
+		--shell /usr/sbin/nologin
+		--home-dir "$VPS_MINECRAFT_DIR"
+		--create-home --skel ""
+		--comment "Minecraft Java Server"
+	)
+	useradd "${useropts[@]}" -- "$VPS_MINECRAFT_USER"
+	#mkdir --parents "$VPS_MINECRAFT_DIR"
+	#chown "$VPS_MINECRAFT_USER": -- "$VPS_MINECRAFT_DIR"
+fi
+
+message 'Download server from Mohjang'
+urljar=$(wget -O - -- "$url" | grep -E ' +href="[^"]+\.jar"[ >]' | cut -d\" -f 2)
+jar=$(basename -- "$urljar")
+wget --timestamping --directory-prefix "$VPS_MINECRAFT_DIR" -- "$urljar"
+
+message 'Create launcher and perform initial run to set up config'
+cat > "$launcher" <<-EOF
+	#!/bin/sh
+	#
+	# By ${VPS_NAME}
+	# https://github.com/MestreLion/vps
+	#
+	# Copyright (C) 2020 Rodrigo Silva (MestreLion) <linux@rodrigosilva.com>
+	# License: GPLv3 or later, at your choice. See <http://www.gnu.org/licenses/gpl>
+
+	mydir=\$(dirname "\$0")
+	myname=\${0##*/}
+
+	if [ "\$1" = "--help" ]; then
+		echo "Minecraft Java Edition Server"
+		echo "Usage: \$myname [--stop]"
+		echo "Service: sudo systemctl <start|stop|status> minecraft.service"
+		exit
+	fi
+
+	if ! [ -w "\$mydir" ]; then
+		echo >&2 "incorrect permissions trying to run \${myname}"
+		echo >&2 "start the server as a service: sudo systemctl start \$myname"
+		exit 1
+	fi
+
+	if [ "\$1" = "--stop" ]; then
+		screen -p 0 -S minecraft -X eval 'stuff "say SERVER SHUTTING DOWN IN 5 SECONDS..."\\015'
+		sleep 5
+		screen -p 0 -S minecraft -X eval 'stuff "stop"\\015'
+		exit
+	fi
+
+	cd "\$mydir"
+	exec screen -DmS minecraft -- java -Xmx768M -Xms512M -jar $(printf '%q' "$jar") --nogui "\$@"
+EOF
+chmod +x "$launcher"
+
+# Run once to generate eula.txt and server.properties
+# It may emit warnings and errors on first run (files not found)
+# and fail on subsequent re-runs (dir is owned by minecraft), that's expected.
+if [[ ! -f "$props" ]] || [[ ! -f "$eula" ]]; then
+	try "$launcher" --initSettings
+fi
+
+if [[ ! -f "$props" ]]; then fatal "server failed to create config files"; fi
+
+# Patch EULA
+echo  # that's intentional!
+bold "$(head -n1 -- "$eula")"
+if ((VPS_INTERACTIVE)); then
+	if ! confirm "Have you read and agreed with Minecraft EULA?"; then
+		fatal "Cancelled by user"
+	fi
+fi
+sed -i '/^eula=false/s/false/TRUE/g' -- "$eula" 2>/dev/null ||
+echo 'eula=TRUE' >> "$eula"
+
+# Patch Server Properties
+if [[ "$VPS_MINECRAFT_SEED" ]] && grep -Fxq -- 'level-seed=' "$props"; then
+	bak=$(bakfile "$props")
+	backup_file "$props" "$bak"
+	awk -v s="$VPS_MINECRAFT_SEED" -- \
+		'/level-seed=/{sub(/=/, "=" s)}{print}' \
+		"$bak" > "$props"
+fi
+
+
+message "Grant ownership to '${VPS_MINECRAFT_USER}'"
+chown --recursive "$VPS_MINECRAFT_USER": -- "$VPS_MINECRAFT_DIR"
+
+
+message 'Setup Firewall'
+ports=$(awk -F= -v ORS=, '$1~/[-.]port$/{print $2}' "$props")
+cat > /etc/ufw/applications.d/minecraft.conf <<-EOF
+	[Minecraft]
+	title=Minecraft Server (Server + RCON + GameSpy4 Query)
+	description=Minecraft: Java Edition Server
+	ports=${ports::-1}/tcp
+EOF
+ufw allow Minecraft
+ufw reload
+
+
+message 'Create, enable and start Minecraft Server systemd service'
+cat > "$service" <<-EOF
+	[Unit]
+	Description=Minecraft Java Server
+	Documentation=https://github.com/MestreLion/vps
+	Wants=network-online.target
+	After=network-online.target
+	AssertPathExists=${VPS_MINECRAFT_DIR}/${jar}
+
+	[Service]
+	User=minecraft
+	Group=minecraft
+	WorkingDirectory=~
+
+	Nice=5
+	NoNewPrivileges=true
+	PrivateDevices=true
+	PrivateTmp=true
+	PrivateUsers=true
+	ProtectHome=true
+	ProtectSystem=strict
+	ReadWriteDirectories=$(printf '%q' "$VPS_MINECRAFT_DIR") /run/screen
+
+	Restart=on-failure
+	RestartSec=1
+	KillMode=none
+
+	ExecStop=$(printf '%q' "$launcher") --stop
+	ExecStart=$(printf '%q' "$launcher")
+
+	[Install]
+	WantedBy=multi-user.target
+EOF
+systemctl daemon-reload
+serv=$(basename "$service")
+try systemctl stop "$serv"
+systemctl enable "$serv"
+systemctl start "$serv"
