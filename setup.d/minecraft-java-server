@@ -4,6 +4,9 @@
 #
 # Copyright (C) 2020 Rodrigo Silva (MestreLion) <linux@rodrigosilva.com>
 # License: GPLv3 or later, at your choice. See <http://www.gnu.org/licenses/gpl>
+#
+# TODO: use mcrcon for stop:
+# https://linuxize.com/post/how-to-install-minecraft-server-on-ubuntu-18-04/
 ###############################################################################
 
 vpslib=$(dirname "$(readlink -f "$0")")/../vpslib
@@ -85,9 +88,9 @@ cat > "$launcher" <<-EOF
 	fi
 
 	if [ "\$1" = "--stop" ]; then
-		screen -p 0 -S minecraft -X eval 'stuff "say SERVER SHUTTING DOWN IN 5 SECONDS..."\\015'
+		screen -S minecraft -X stuff "say SERVER SHUTTING DOWN IN 5 SECONDS...\n"
 		sleep 5
-		screen -p 0 -S minecraft -X eval 'stuff "stop"\\015'
+		screen -S minecraft -X stuff "stop\n"
 		exit
 	fi
 
@@ -107,7 +110,8 @@ if [[ ! -f "$props" ]]; then fatal "server failed to create config files"; fi
 
 # Patch EULA
 echo  # that's intentional!
-bold "$(head -n1 -- "$eula")"
+bold "\n$(head -n1 -- "$eula")\n"
+echo  # and so is this
 if ((VPS_INTERACTIVE)); then
 	if ! confirm "Have you read and agreed with Minecraft EULA?"; then
 		fatal "Cancelled by user"
@@ -132,6 +136,7 @@ chown --recursive "$VPS_MINECRAFT_USER": -- "$VPS_MINECRAFT_DIR"
 
 message 'Setup Firewall'
 ports=$(awk -F= -v ORS=, '$1~/[-.]port$/{print $2}' "$props")
+# FIXME: GameSpy4 Query port is for UDP, not TCP
 cat > /etc/ufw/applications.d/minecraft.conf <<-EOF
 	[Minecraft]
 	title=Minecraft Server (Server + RCON + GameSpy4 Query)
