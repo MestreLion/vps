@@ -7,6 +7,8 @@
 #
 # TODO: use mcrcon for stop:
 # https://linuxize.com/post/how-to-install-minecraft-server-on-ubuntu-18-04/
+# TODO: explore alternatives: named pipes on stdin; tail -f | java, etc
+# TODO: https://launchermeta.mojang.com/mc/game/version_manifest.json
 ###############################################################################
 
 vpslib=$(dirname "$(readlink -f "$0")")/../vpslib
