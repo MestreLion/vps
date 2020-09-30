@@ -26,7 +26,7 @@ VPS_MINECRAFT_SEED=1052397348887568626
 #------------------------------------------------------------------------------
 
 url='https://www.minecraft.net/en-us/download/server'
-service=/etc/systemd/system/minecraft.service
+service=minecraft.service
 
 launcher=$VPS_MINECRAFT_DIR/minecraft-server.sh
 eula=$VPS_MINECRAFT_DIR/eula.txt
@@ -71,19 +71,19 @@ cat > "$launcher" <<-EOF
 	# Copyright (C) 2020 Rodrigo Silva (MestreLion) <linux@rodrigosilva.com>
 	# License: GPLv3 or later, at your choice. See <http://www.gnu.org/licenses/gpl>
 
-	mydir=\$(dirname "\$0")
+	mydir=\$(dirname "\$(readlink -f "\$0")")
 	myname=\${0##*/}
 
 	if [ "\$1" = "--help" ]; then
 		echo "Minecraft Java Edition Server"
 		echo "Usage: \$myname [--stop]"
-		echo "Service: sudo systemctl <start|stop|status> minecraft.service"
+		echo "Service: sudo systemctl start ${service}"
 		exit
 	fi
 
 	if ! [ -w "\$mydir" ]; then
 		echo >&2 "incorrect permissions trying to run \${myname}"
-		echo >&2 "start the server as a service: sudo systemctl start \$myname"
+		echo >&2 "start the server as a service: sudo systemctl start ${service}"
 		exit 1
 	fi
 
@@ -95,7 +95,7 @@ cat > "$launcher" <<-EOF
 	fi
 
 	cd "\$mydir"
-	exec screen -DmS minecraft -- java -Xmx768M -Xms512M -jar $(printf '%q' "$jar") --nogui "\$@"
+	exec screen -DmS minecraft -- java -Xmx2G -Xms1G -jar $(printf '%q' "$jar") --nogui "\$@"
 EOF
 chmod +x "$launcher"
 
@@ -110,7 +110,7 @@ if [[ ! -f "$props" ]]; then fatal "server failed to create config files"; fi
 
 # Patch EULA
 echo  # that's intentional!
-bold "\n$(head -n1 -- "$eula")\n"
+bold "$(head -n1 -- "$eula")"
 echo  # and so is this
 if ((VPS_INTERACTIVE)); then
 	if ! confirm "Have you read and agreed with Minecraft EULA?"; then
@@ -148,7 +148,7 @@ ufw reload
 
 
 message 'Create, enable and start Minecraft Server systemd service'
-cat > "$service" <<-EOF
+cat > /etc/systemd/system/"$service" <<-EOF
 	[Unit]
 	Description=Minecraft Java Server
 	Documentation=https://github.com/MestreLion/vps
@@ -157,6 +157,7 @@ cat > "$service" <<-EOF
 	AssertPathExists=${VPS_MINECRAFT_DIR}/${jar}
 
 	[Service]
+	Type=exec
 	User=minecraft
 	Group=minecraft
 	WorkingDirectory=~
@@ -181,7 +182,6 @@ cat > "$service" <<-EOF
 	WantedBy=multi-user.target
 EOF
 systemctl daemon-reload
-serv=$(basename "$service")
-try systemctl stop "$serv"
-systemctl enable "$serv"
-systemctl start "$serv"
+try systemctl stop "$service"
+systemctl enable "$service"
+systemctl start "$service"
