@@ -5,6 +5,7 @@
 # Copyright (C) 2020 Rodrigo Silva (MestreLion) <linux@rodrigosilva.com>
 # License: GPLv3 or later, at your choice. See <http://www.gnu.org/licenses/gpl>
 #
+# TODO: use file socket for stdin: https://unix.stackexchange.com/a/612118/4919
 # TODO: use mcrcon for stop:
 # https://linuxize.com/post/how-to-install-minecraft-server-on-ubuntu-18-04/
 # TODO: explore alternatives: named pipes on stdin; tail -f | java, etc
