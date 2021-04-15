@@ -69,7 +69,7 @@ package_version() {
 	dpkg-query --showformat='${Version}' --show "$1" 2>/dev/null
 }
 package_installed() {
-	package_version "$1" >/dev/null;
+	local ok=$(package_version "$1") && [[ "$ok" ]]
 }
 package_install() {
 	# Install all non-existing packages in a single command
