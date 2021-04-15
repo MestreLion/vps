@@ -61,7 +61,8 @@ fi
 
 message 'Download server from Mohjang'
 urljar=$(wget -O - -- "$url" | grep -E ' +href="[^"]+\.jar"[ >]' | cut -d\" -f 2)
-jar=$(basename -- "$urljar")
+jar=$VPS_MINECRAFT_DIR/$(basename -- "$urljar")
+exec=(java -Xmx4G -Xms2G -jar $(printf '%q' "$jar") --nogui)
 wget --timestamping --directory-prefix "$VPS_MINECRAFT_DIR" -- "$urljar"
 
 message 'Create launcher and perform initial run to set up config'
@@ -98,7 +99,7 @@ cat > "$launcher" <<-EOF
 	fi
 
 	cd "\$mydir"
-	exec screen -DmS minecraft -- java -Xmx2G -Xms1G -jar $(printf '%q' "$jar") --nogui "\$@"
+	exec screen -DmS minecraft -- ${exec[@]} "\$@"
 EOF
 chmod +x "$launcher"
 
@@ -106,10 +107,16 @@ chmod +x "$launcher"
 # It may emit warnings and errors on first run (files not found)
 # and fail on subsequent re-runs (dir is owned by minecraft), that's expected.
 if [[ ! -f "$props" ]] || [[ ! -f "$eula" ]]; then
-	try "$launcher" --initSettings
+	cd -- "$VPS_MINECRAFT_DIR"
+	sudo -u minecraft "${exec[@]}" --initSettings
 fi
 
 if [[ ! -f "$props" ]]; then fatal "server failed to create config files"; fi
+
+# "Touch" /run/screen
+mkdir -p -m 777 /run/screen
+chmod 777 /run/screen
+#sudo -u minecraft screen -DmS minecraft -- true
 
 # Patch EULA
 echo  # that's intentional!
@@ -140,14 +147,17 @@ chown --recursive "$VPS_MINECRAFT_USER": -- "$VPS_MINECRAFT_DIR"
 message 'Setup Firewall'
 ports=$(awk -F= -v ORS=, '$1~/[-.]port$/{print $2}' "$props")
 # FIXME: GameSpy4 Query port is for UDP, not TCP
+mkdir -p -- /etc/ufw/applications.d
 cat > /etc/ufw/applications.d/minecraft.conf <<-EOF
 	[Minecraft]
 	title=Minecraft Server (Server + RCON + GameSpy4 Query)
 	description=Minecraft: Java Edition Server
 	ports=${ports::-1}/tcp
 EOF
-ufw allow Minecraft
-ufw reload
+if exists ufw; then
+	ufw allow Minecraft
+	ufw reload
+fi
 
 
 message 'Create, enable and start Minecraft Server systemd service'
@@ -157,7 +167,7 @@ cat > /etc/systemd/system/"$service" <<-EOF
 	Documentation=https://github.com/MestreLion/vps
 	Wants=network-online.target
 	After=network-online.target
-	AssertPathExists=${VPS_MINECRAFT_DIR}/${jar}
+	AssertPathExists=${jar}
 
 	[Service]
 	Type=exec
@@ -175,7 +185,7 @@ cat > /etc/systemd/system/"$service" <<-EOF
 	ReadWriteDirectories=$(printf '%q' "$VPS_MINECRAFT_DIR") /run/screen
 
 	Restart=on-failure
-	RestartSec=1
+	RestartSec=5
 	KillMode=none
 
 	ExecStop=$(printf '%q' "$launcher") --stop
