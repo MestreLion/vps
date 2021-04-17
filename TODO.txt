@@ -1,0 +1,5 @@
+Consider installing:
+- fail2ban/denyhosts (ban failed login attempts)
+- portsentry (ban port scans)
+- move SSH to 1022 (should be <1024 to guarantee root executable)
+- "Access Denied" honeypots on ports 22, 222, 2222, etc
