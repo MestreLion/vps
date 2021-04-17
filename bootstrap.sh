@@ -8,7 +8,7 @@
 # Tasks performed:
 # - Install git from distribution repositories
 # - Clone project git repository, by default from Github
-# - Update (pull) the local git repository
+# - Force-update the local git repository
 # - Run the installer
 #
 # Instructions:
